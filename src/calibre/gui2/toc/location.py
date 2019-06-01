@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:fdm=marker:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2013, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -57,6 +56,8 @@ class Page(QWebPage):  # {{{
             from calibre.utils.resources import compiled_coffeescript
             self.js = compiled_coffeescript('ebooks.oeb.display.utils')
             self.js += compiled_coffeescript('ebooks.oeb.polish.choose')
+            if isinstance(self.js, bytes):
+                self.js = self.js.decode('utf-8')
         self.mainFrame().addToJavaScriptWindowObject("py_bridge", self)
         self.evaljs(self.js)
 # }}}

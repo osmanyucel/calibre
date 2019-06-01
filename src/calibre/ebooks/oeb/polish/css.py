@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=utf-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__ = 'GPL v3'
 __copyright__ = '2014, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -13,12 +12,12 @@ from css_parser.css import CSSRule, CSSStyleDeclaration
 from css_selectors import parse, SelectorSyntaxError
 
 from calibre import force_unicode
-from calibre.ebooks.oeb.base import OEB_STYLES, OEB_DOCS, XHTML
+from calibre.ebooks.oeb.base import OEB_STYLES, OEB_DOCS, XHTML, css_text
 from calibre.ebooks.oeb.normalize_css import normalize_filter_css, normalizers
 from calibre.ebooks.oeb.polish.pretty import pretty_script_or_style, pretty_xml_tree, serialize
 from calibre.utils.icu import numeric_sort_key
 from css_selectors import Select, SelectorError
-from polyglot.builtins import iteritems, itervalues, unicode_type
+from polyglot.builtins import iteritems, itervalues, unicode_type, filter
 
 
 def filter_used_rules(rules, log, select):
@@ -325,14 +324,13 @@ def remove_property_value(prop, predicate):
     values of the property would be removed, the property is removed from its
     parent instead. Note that this means the property must have a parent (a
     CSSStyleDeclaration). '''
-    removed_vals = []
-    removed_vals = filter(predicate, prop.propertyValue)
+    removed_vals = list(filter(predicate, prop.propertyValue))
     if len(removed_vals) == len(prop.propertyValue):
         prop.parent.removeProperty(prop.name)
     else:
-        x = prop.propertyValue.cssText
+        x = css_text(prop.propertyValue)
         for v in removed_vals:
-            x = x.replace(v.cssText, '').strip()
+            x = x.replace(css_text(v), '').strip()
         prop.propertyValue.cssText = x
     return bool(removed_vals)
 

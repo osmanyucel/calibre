@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-from __future__ import (unicode_literals, division, absolute_import, print_function)
 store_version = 9  # Needed for dynamic plugin loading
 
 __license__ = 'GPL 3'
@@ -8,9 +8,12 @@ __copyright__ = '2011-2017, Tomasz Długosz <tomek3d@gmail.com>'
 __docformat__ = 'restructuredtext en'
 
 import re
-import urllib
 from base64 import b64encode
 from contextlib import closing
+try:
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote
 
 from lxml import html
 
@@ -55,7 +58,7 @@ class VirtualoStore(BasicStoreConfig, StorePlugin):
             d.exec_()
 
     def search(self, query, max_results=12, timeout=60):
-        url = 'http://virtualo.pl/?q=' + urllib.quote(query)
+        url = 'http://virtualo.pl/?q=' + quote(query)
 
         br = browser()
         no_drm_pattern = re.compile(r'Watermark|Brak')

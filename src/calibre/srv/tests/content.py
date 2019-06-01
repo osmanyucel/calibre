@@ -1,12 +1,11 @@
 #!/usr/bin/env python2
 # vim:fileencoding=utf-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__ = 'GPL v3'
 __copyright__ = '2015, Kovid Goyal <kovid at kovidgoyal.net>'
 
-import zlib, json, binascii, time, os
+import zlib, json, time, os
 from io import BytesIO
 
 from calibre.ebooks.metadata.epub import get_metadata
@@ -15,6 +14,7 @@ from calibre.srv.tests.base import LibraryBaseTest
 from calibre.utils.imghdr import identify
 from calibre.utils.shared_file import share_open
 from polyglot import http_client
+from polyglot.binary import from_hex_unicode
 
 
 def setUpModule():
@@ -42,8 +42,8 @@ class ContentTest(LibraryBaseTest):
                 missing('/%s/C:/out.html' % prefix, b'Naughty, naughty!')
 
             def test_response(r):
-                self.assertIn(b'max-age=', r.getheader('Cache-Control'))
-                self.assertIn(b'public', r.getheader('Cache-Control'))
+                self.assertIn('max-age=', r.getheader('Cache-Control'))
+                self.assertIn('public', r.getheader('Cache-Control'))
                 self.assertIsNotNone(r.getheader('Expires'))
                 self.assertIsNotNone(r.getheader('ETag'))
                 self.assertIsNotNone(r.getheader('Content-Type'))
@@ -181,7 +181,7 @@ class ContentTest(LibraryBaseTest):
             self.ae(r.status, http_client.OK)
             self.ae(data, db.cover(2))
             self.ae(r.getheader('Used-Cache'), 'no')
-            path = binascii.unhexlify(r.getheader('Tempfile')).decode('utf-8')
+            path = from_hex_unicode(r.getheader('Tempfile'))
             f, fdata = share_open(path, 'rb'), data
             # Now force an update
             change_cover(1)
@@ -189,7 +189,7 @@ class ContentTest(LibraryBaseTest):
             self.ae(r.status, http_client.OK)
             self.ae(data, db.cover(2))
             self.ae(r.getheader('Used-Cache'), 'no')
-            path = binascii.unhexlify(r.getheader('Tempfile')).decode('utf-8')
+            path = from_hex_unicode(r.getheader('Tempfile'))
             f2, f2data = share_open(path, 'rb'), data
             # Do it again
             change_cover(2)

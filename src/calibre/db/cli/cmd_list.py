@@ -13,7 +13,7 @@ from calibre import prints
 from calibre.db.cli.utils import str_width
 from calibre.ebooks.metadata import authors_to_string
 from calibre.utils.date import isoformat
-from polyglot.builtins import iteritems
+from polyglot.builtins import iteritems, unicode_type, map
 
 readonly = True
 version = 0  # change this if you change signature of implementation()
@@ -161,12 +161,14 @@ def do_list(
     fields = ['id'] + fields
     stringify(data, metadata, for_machine)
     if for_machine:
-        json.dump(
+        raw = json.dumps(
             list(as_machine_data(book_ids, data, metadata)),
-            sys.stdout,
             indent=2,
             sort_keys=True
         )
+        if not isinstance(raw, bytes):
+            raw = raw.encode('utf-8')
+        getattr(sys.stdout, 'buffer', sys.stdout).write(raw)
         return
     from calibre.utils.terminal import ColoredStream, geometry
 
@@ -181,7 +183,7 @@ def do_list(
     if not screen_width:
         screen_width = 80
     field_width = screen_width // len(fields)
-    base_widths = map(lambda x: min(x + 1, field_width), widths)
+    base_widths = list(map(lambda x: min(x + 1, field_width), widths))
 
     while sum(base_widths) < screen_width:
         adjusted = False
@@ -307,7 +309,7 @@ List the books available in the calibre database.
 def main(opts, args, dbctx):
     afields = set(FIELDS) | {'id'}
     if opts.fields.strip():
-        fields = [str(f.strip().lower()) for f in opts.fields.split(',')]
+        fields = [unicode_type(f.strip().lower()) for f in opts.fields.split(',')]
     else:
         fields = []
 

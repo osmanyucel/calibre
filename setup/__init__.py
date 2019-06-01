@@ -24,8 +24,6 @@ sys.path.insert(0, SRC)
 sys.resources_location = os.path.join(os.path.dirname(SRC), 'resources')
 sys.extensions_location = os.path.abspath(os.environ.get('CALIBRE_SETUP_EXTENSIONS_PATH', os.path.join(SRC, 'calibre', 'plugins')))
 sys.running_from_setup = True
-if not hasattr(os, 'getcwdu'):
-    os.getcwdu = os.getcwd
 
 __version__ = __appname__ = modules = functions = basenames = scripts = None
 
@@ -44,6 +42,15 @@ def newer(targets, sources):
     stimes = map(lambda x: os.stat(x).st_mtime, sources)
     newest_source, oldest_target = max(stimes), min(ttimes)
     return newest_source > oldest_target
+
+
+def dump_json(obj, path, indent=4):
+    import json
+    with open(path, 'wb') as f:
+        data = json.dumps(obj, indent=indent)
+        if not isinstance(data, bytes):
+            data = data.encode('utf-8')
+        f.write(data)
 
 
 def download_securely(url):

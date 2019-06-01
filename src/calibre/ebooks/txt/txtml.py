@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 __license__ = 'GPL 3'
 __copyright__ = '2009, John Schember <john@nachtimwald.com>'
@@ -11,7 +12,7 @@ Transform OEB content into plain text
 import re
 
 from lxml import etree
-from polyglot.builtins import unicode_type, string_or_bytes
+from polyglot.builtins import string_or_bytes
 
 
 BLOCK_TAGS = [
@@ -73,7 +74,7 @@ class TXTMLizer(object):
             for x in item.data.iterdescendants(etree.Comment):
                 if x.text and '--' in x.text:
                     x.text = x.text.replace('--', '__')
-            content = unicode_type(etree.tostring(item.data, encoding=unicode_type))
+            content = etree.tostring(item.data, encoding='unicode')
             content = self.remove_newlines(content)
             content = etree.fromstring(content)
             stylizer = Stylizer(content, item.href, self.oeb_book, self.opts, self.opts.output_profile)
@@ -116,7 +117,6 @@ class TXTMLizer(object):
     def cleanup_text(self, text):
         self.log.debug('\tClean up text...')
         # Replace bad characters.
-        text = text.replace(u'\xc2', '')
         text = text.replace(u'\xa0', ' ')
 
         # Replace tabs, vertical tags and form feeds with single space.

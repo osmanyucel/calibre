@@ -1,6 +1,5 @@
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:fdm=marker:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2013, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -393,8 +392,10 @@ def create_epub_cover(container, cover_path, existing_image, options=None):
     titlepage_item = container.generate_item(tname, id_prefix='titlepage')
     titlepage = container.href_to_name(titlepage_item.get('href'),
                                           container.opf_name)
-    raw = templ%container.name_to_href(raster_cover, titlepage).encode('utf-8')
+    raw = templ % container.name_to_href(raster_cover, titlepage)
     with container.open(titlepage, 'wb') as f:
+        if not isinstance(raw, bytes):
+            raw = raw.encode('utf-8')
         f.write(raw)
 
     # We have to make sure the raster cover item has id="cover" for the moron

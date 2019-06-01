@@ -89,7 +89,7 @@ class SimpleText(Base):
         self.widgets = [QLabel('&'+self.col_metadata['name']+':', parent), QLineEdit(parent)]
 
     def setter(self, val):
-        self.widgets[1].setText(type(u'')(val or ''))
+        self.widgets[1].setText(unicode_type(val or ''))
 
     def getter(self):
         return self.widgets[1].text().strip()
@@ -112,7 +112,7 @@ class LongText(Base):
         self.widgets = [self._box]
 
     def setter(self, val):
-        self._tb.setPlainText(type(u'')(val or ''))
+        self._tb.setPlainText(unicode_type(val or ''))
 
     def getter(self):
         return self._tb.toPlainText()
@@ -377,14 +377,13 @@ class Comments(Base):
             val = None
         return val
 
-    @dynamic_property
+    @property
     def tab(self):
-        def fget(self):
-            return self._tb.tab
+        return self._tb.tab
 
-        def fset(self, val):
-            self._tb.tab = val
-        return property(fget=fget, fset=fset)
+    @tab.setter
+    def tab(self, val):
+        self._tb.tab = val
 
     def connect_data_changed(self, slot):
         self._tb.data_changed.connect(slot)

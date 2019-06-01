@@ -24,7 +24,7 @@ from calibre.gui2 import (config, error_dialog, Dispatcher, dynamic,
         warning_dialog, info_dialog, choose_dir, FunctionDispatcher,
         show_restart_warning, gprefs, question_dialog)
 from calibre.ebooks.metadata import authors_to_string
-from calibre import preferred_encoding, prints, force_unicode, as_unicode, sanitize_file_name2
+from calibre import preferred_encoding, prints, force_unicode, as_unicode, sanitize_file_name
 from calibre.utils.filenames import ascii_filename
 from calibre.devices.errors import (FreeSpaceError, WrongDestinationError,
         BlacklistedDevice)
@@ -627,7 +627,7 @@ class DeviceManager(Thread):  # {{{
     def _save_books(self, paths, target):
         '''Copy books from device to disk'''
         for path in paths:
-            name = sanitize_file_name2(os.path.basename(path))
+            name = sanitize_file_name(os.path.basename(path))
             dest = os.path.join(target, name)
             if os.path.abspath(dest) != os.path.abspath(path):
                 with lopen(dest, 'wb') as f:
@@ -1353,7 +1353,7 @@ class DeviceMixin(object):  # {{{
                     prefix = prefix.decode(preferred_encoding, 'replace')
                 prefix = ascii_filename(prefix)
                 names.append('%s_%d%s'%(prefix, id,
-                    os.path.splitext(f)[1]))
+                    os.path.splitext(files[-1])[1]))
                 self.update_thumbnail(mi)
             dynamic.set('catalogs_to_be_synced', set([]))
             if files:
@@ -1367,29 +1367,26 @@ class DeviceMixin(object):  # {{{
                         memory=[files, remove])
                 self.status_bar.show_message(_('Sending catalogs to device.'), 5000)
 
-    @dynamic_property
+    @property
     def news_to_be_synced(self):
-        doc = 'Set of ids to be sent to device'
+        'Set of ids to be sent to device'
+        ans = []
+        try:
+            ans = self.library_view.model().db.prefs.get('news_to_be_synced',
+                    [])
+        except:
+            import traceback
+            traceback.print_exc()
+        return set(ans)
 
-        def fget(self):
-            ans = []
-            try:
-                ans = self.library_view.model().db.prefs.get('news_to_be_synced',
-                        [])
-            except:
-                import traceback
-                traceback.print_exc()
-            return set(ans)
-
-        def fset(self, ids):
-            try:
-                self.library_view.model().db.new_api.set_pref('news_to_be_synced',
-                        list(ids))
-            except:
-                import traceback
-                traceback.print_exc()
-
-        return property(fget=fget, fset=fset, doc=doc)
+    @news_to_be_synced.setter
+    def news_to_be_synced(self, ids):
+        try:
+            self.library_view.model().db.new_api.set_pref('news_to_be_synced',
+                    list(ids))
+        except:
+            import traceback
+            traceback.print_exc()
 
     def sync_news(self, send_ids=None, do_auto_convert=True):
         if self.device_connected:
@@ -1424,7 +1421,7 @@ class DeviceMixin(object):  # {{{
                         self.iactions['Convert Books'].auto_convert_news(auto, format)
             files = [f for f in files if f is not None]
             if not files:
-                self.news_to_be_synced = set([])
+                self.news_to_be_synced = set()
                 return
             metadata = self.library_view.model().metadata_for(ids)
             names = []
@@ -1434,7 +1431,7 @@ class DeviceMixin(object):  # {{{
                     prefix = prefix.decode(preferred_encoding, 'replace')
                 prefix = ascii_filename(prefix)
                 names.append('%s_%d%s'%(prefix, id,
-                    os.path.splitext(f)[1]))
+                    os.path.splitext(files[-1])[1]))
                 self.update_thumbnail(mi)
             self.news_to_be_synced = set([])
             if config['upload_news_to_device'] and files:

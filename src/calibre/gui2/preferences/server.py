@@ -32,6 +32,7 @@ from calibre.srv.users import (
     UserManager, create_user_data, validate_password, validate_username
 )
 from calibre.utils.icu import primary_sort_key
+from polyglot.builtins import unicode_type, as_bytes
 
 try:
     from PyQt5 import sip
@@ -189,7 +190,7 @@ class Text(QLineEdit):
         return self.text().strip() or None
 
     def set(self, val):
-        self.setText(type(u'')(val or ''))
+        self.setText(unicode_type(val or ''))
 
 
 class Path(QWidget):
@@ -218,7 +219,7 @@ class Path(QWidget):
         return self.text.text().strip() or None
 
     def set(self, val):
-        self.text.setText(type(u'')(val or ''))
+        self.text.setText(unicode_type(val or ''))
 
     def choose(self):
         ans = choose_files(self, 'choose_path_srv_opts_' + self.dname, _('Choose a file'), select_only_single_file=True)
@@ -966,7 +967,7 @@ class CustomList(QWidget):  # {{{
         if path:
             raw = self.serialize(self.current_template)
             with lopen(path, 'wb') as f:
-                f.write(raw)
+                f.write(as_bytes(raw))
 
     def thumbnail_state_changed(self):
         is_enabled = bool(self.thumbnail.isChecked())
@@ -1019,7 +1020,7 @@ class CustomList(QWidget):  # {{{
         else:
             raw = self.serialize(template)
             with lopen(custom_list_template.path, 'wb') as f:
-                f.write(raw)
+                f.write(as_bytes(raw))
         return True
 
 # }}}

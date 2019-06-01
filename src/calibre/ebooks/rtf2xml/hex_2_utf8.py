@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, absolute_import, print_function, division
 #########################################################################
 #                                                                       #
 #                                                                       #
@@ -10,11 +11,12 @@
 #                                                                       #
 #                                                                       #
 #########################################################################
-import sys, os, cStringIO
+import sys, os, io
 
 from calibre.ebooks.rtf2xml import get_char_map, copy
 from calibre.ebooks.rtf2xml.char_set import char_set
 from calibre.ptempfile import better_mktemp
+from . import open_for_read, open_for_write
 
 
 class Hex2Utf8:
@@ -148,7 +150,7 @@ class Hex2Utf8:
         # 128, and the encoding system for Microsoft characters.
         # New on 2004-05-8: the self.__char_map is not in directory with other
         # modules
-        self.__char_file = cStringIO.StringIO(char_set)
+        self.__char_file = io.StringIO(char_set)
         char_map_obj =  get_char_map.GetCharMap(
                 char_file=self.__char_file,
                 bug_handler=self.__bug_handler,
@@ -282,8 +284,8 @@ class Hex2Utf8:
 
     def __convert_preamble(self):
         self.__state = 'preamble'
-        with open(self.__write_to, 'w') as self.__write_obj:
-            with open(self.__file, 'r') as read_obj:
+        with open_for_write(self.__write_to) as self.__write_obj:
+            with open_for_read(self.__file) as read_obj:
                 for line in read_obj:
                     self.__token_info = line[:16]
                     action = self.__preamble_state_dict.get(self.__state)
@@ -540,8 +542,8 @@ class Hex2Utf8:
 
     def __convert_body(self):
         self.__state = 'body'
-        with open(self.__file, 'r') as read_obj:
-            with open(self.__write_to, 'w') as self.__write_obj:
+        with open_for_read(self.__file) as read_obj:
+            with open_for_write(self.__write_to) as self.__write_obj:
                 for line in read_obj:
                     self.__token_info = line[:16]
                     action = self.__body_state_dict.get(self.__state)

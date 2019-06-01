@@ -31,7 +31,7 @@ from calibre.ebooks.oeb.polish.utils import extract, guess_type
 from calibre.utils.logging import default_log
 from calibre.utils.short_uuid import uuid4
 from polyglot.binary import as_base64_unicode as encode_component, from_base64_unicode as decode_component
-from polyglot.builtins import iteritems, map, unicode_type
+from polyglot.builtins import iteritems, map, is_py3, unicode_type
 from polyglot.urllib import quote, urlparse
 
 RENDER_VERSION = 1
@@ -81,7 +81,7 @@ def transform_declaration(decl):
             if unit in absolute_units:
                 changed = True
                 l = convert_fontsize(l, unit)
-                decl.change_property(prop, parent_prop, str(l) + 'rem')
+                decl.change_property(prop, parent_prop, unicode_type(l) + 'rem')
     return changed
 
 
@@ -230,8 +230,11 @@ class Container(ContainerBase):
         self.commit()
         for name in excluded_names:
             os.remove(self.name_path_map[name])
+        data = json.dumps(self.book_render_data, ensure_ascii=False)
+        if not isinstance(data, bytes):
+            data = data.encode('utf-8')
         with lopen(os.path.join(self.root, 'calibre-book-manifest.json'), 'wb') as f:
-            f.write(json.dumps(self.book_render_data, ensure_ascii=False).encode('utf-8'))
+            f.write(data)
 
     def create_cover_page(self, input_fmt):
         templ = '''
@@ -498,7 +501,10 @@ def html_as_dict(root):
         if child.tag.partition('}')[-1] not in ('head', 'body'):
             root.remove(child)
     root.text = root.tail = None
-    nsmap = defaultdict(count().next)
+    if is_py3:
+        nsmap = defaultdict(count().__next__)
+    else:
+        nsmap = defaultdict(count().next)
     nsmap[XHTML_NS]
     tags = [serialize_elem(root, nsmap)]
     tree = [0]

@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2011, Kovid Goyal <kovid@kovidgoyal.net>'
@@ -13,8 +12,8 @@ Test a binary calibre build to ensure that all needed binary images/libraries ha
 
 import os, ctypes, sys, unittest, time
 
-from calibre.constants import plugins, iswindows, islinux, isosx
-from polyglot.builtins import iteritems, map, unicode_type
+from calibre.constants import plugins, iswindows, islinux, isosx, ispy3, plugins_loc
+from polyglot.builtins import iteritems, map, unicode_type, getenv, native_string_type
 
 is_ci = os.environ.get('CI', '').lower() == 'true'
 
@@ -28,7 +27,7 @@ class BuildTest(unittest.TestCase):
         for x in os.listdir(base):
             if x.lower().endswith('.dll'):
                 try:
-                    ctypes.WinDLL(str(os.path.join(base, x)))
+                    ctypes.WinDLL(native_string_type(os.path.join(base, x)))
                 except Exception as err:
                     self.assertTrue(False, 'Failed to load DLL %s with error: %s' % (x, err))
 
@@ -73,43 +72,18 @@ class BuildTest(unittest.TestCase):
         from html5_parser import parse
         parse('<p>xxx')
 
-    def test_import_of_all_python_modules(self):
-        import importlib
-        exclude_modules = {'calibre.gui2.dbus_export.demo', 'calibre.gui2.dbus_export.gtk'}
-        exclude_packages = {'calibre.devices.mtp.unix.upstream'}
-        if not iswindows:
-            exclude_modules |= {'calibre.utils.iphlpapi', 'calibre.utils.open_with.windows', 'calibre.devices.winusb'}
-            exclude_packages |= {'calibre.utils.winreg'}
-        if not isosx:
-            exclude_modules.add('calibre.utils.open_with.osx')
-        if not islinux:
-            exclude_modules |= {
-                    'calibre.utils.dbus_service', 'calibre.linux',
-                    'calibre.utils.linux_trash', 'calibre.utils.open_with.linux',
-                    'calibre.gui2.linux_file_dialogs'
-            }
-            exclude_packages.add('calibre.gui2.dbus_export')
-        base = os.path.dirname(__file__)
-        import_base = os.path.dirname(base)
-        count = 0
-        for root, dirs, files in os.walk(base):
-            for d in dirs:
-                if not os.path.isfile(os.path.join(root, d, '__init__.py')):
-                    dirs.remove(d)
-            for fname in files:
-                module_name, ext = os.path.splitext(fname)
-                if ext != '.py':
-                    continue
-                path = os.path.join(root, module_name)
-                relpath = os.path.relpath(path, import_base).replace(os.sep, '/')
-                full_module_name = '.'.join(relpath.split('/'))
-                if full_module_name.endswith('.__init__'):
-                    full_module_name = full_module_name.rpartition('.')[0]
-                if full_module_name in exclude_modules or ('.' in full_module_name and full_module_name.rpartition('.')[0] in exclude_packages):
-                    continue
-                importlib.import_module(full_module_name)
-                count += 1
-        self.assertGreater(count, 1000)
+    def test_bs4(self):
+        import soupsieve, bs4
+        del soupsieve, bs4
+
+    def test_zeroconf(self):
+        if ispy3:
+            import zeroconf as z, ifaddr
+        else:
+            import calibre.utils.Zeroconf as z
+            ifaddr = None
+        del z
+        del ifaddr
 
     def test_plugins(self):
         exclusions = set()
@@ -128,7 +102,7 @@ class BuildTest(unittest.TestCase):
             if name in exclusions:
                 if name in ('libusb', 'libmtp'):
                     # Just check that the DLL can be loaded
-                    ctypes.CDLL(os.path.join(sys.extensions_location, name + ('.dylib' if isosx else '.so')))
+                    ctypes.CDLL(os.path.join(plugins_loc, name + ('.dylib' if isosx else '.so')))
                 continue
             mod, err = plugins[name]
             self.assertFalse(err or not mod, 'Failed to load plugin: ' + name + ' with error:\n' + err)
@@ -152,7 +126,7 @@ class BuildTest(unittest.TestCase):
             s = msgpack_dumps(obj)
             self.assertEqual(obj, msgpack_loads(s))
         self.assertEqual(type(msgpack_loads(msgpack_dumps(b'b'))), bytes)
-        self.assertEqual(type(msgpack_loads(msgpack_dumps(u'b'))), type(u''))
+        self.assertEqual(type(msgpack_loads(msgpack_dumps('b'))), unicode_type)
         large = b'x' * (100 * 1024 * 1024)
         msgpack_loads(msgpack_dumps(large))
 
@@ -178,14 +152,14 @@ class BuildTest(unittest.TestCase):
         au(d['decimal_point'], 'localeconv')
         for k, v in iteritems(d):
             au(v, k)
-        for k in os.environ.keys():
-            au(winutil.getenv(unicode_type(k)), 'getenv-' + k)
+        for k in os.environ:
+            au(getenv(k), 'getenv-' + k)
         os.environ['XXXTEST'] = 'YYY'
-        self.assertEqual(winutil.getenv(u'XXXTEST'), u'YYY')
+        self.assertEqual(getenv('XXXTEST'), 'YYY')
         del os.environ['XXXTEST']
-        self.assertIsNone(winutil.getenv(u'XXXTEST'))
+        self.assertIsNone(getenv('XXXTEST'))
         t = time.localtime()
-        fmt = u'%Y%a%b%e%H%M'
+        fmt = '%Y%a%b%e%H%M'
         for fmt in (fmt, fmt.encode('ascii')):
             x = strftime(fmt, t)
             au(x, 'strftime')
@@ -204,7 +178,8 @@ class BuildTest(unittest.TestCase):
 
     @unittest.skipIf('SKIP_QT_BUILD_TEST' in os.environ, 'Skipping Qt build test as it causes crashes in the macOS VM')
     def test_qt(self):
-        from PyQt5.Qt import QImageReader, QNetworkAccessManager, QFontDatabase
+        from PyQt5.QtGui import QImageReader, QFontDatabase
+        from PyQt5.QtNetwork import QNetworkAccessManager
         from calibre.utils.img import image_from_data, image_to_data, test
         # Ensure that images can be read before QApplication is constructed.
         # Note that this requires QCoreApplication.libraryPaths() to return the
@@ -213,7 +188,7 @@ class BuildTest(unittest.TestCase):
         # it should just work because the hard-coded paths of the Qt
         # installation should work. If they do not, then it is a distro
         # problem.
-        fmts = set(map(lambda x: x.data().decode('utf-8'), QImageReader.supportedImageFormats()))
+        fmts = set(map(lambda x: x.data().decode('utf-8'), QImageReader.supportedImageFormats()))  # no2to3
         testf = {'jpg', 'png', 'svg', 'ico', 'gif'}
         self.assertEqual(testf.intersection(fmts), testf, "Qt doesn't seem to be able to load some of its image plugins. Available plugins: %s" % fmts)
         data = P('images/blank.png', allow_user_override=False, data=True)
@@ -333,7 +308,7 @@ class BuildTest(unittest.TestCase):
         if isosx:
             cafile = ssl.get_default_verify_paths().cafile
             if not cafile or not cafile.endswith('/mozilla-ca-certs.pem') or not os.access(cafile, os.R_OK):
-                self.assert_('Mozilla CA certs not loaded')
+                raise AssertionError('Mozilla CA certs not loaded')
 
 
 def find_tests():

@@ -1,14 +1,12 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import re, sys
 from collections import defaultdict
 
 from polyglot.builtins import reraise, unicode_type
 
-from lxml.etree import tostring
 from lxml.html import (fragment_fromstring, document_fromstring,
         tostring as htostring)
 
@@ -156,7 +154,7 @@ class Document:
                     continue  # try again
                 else:
                     return cleaned_article
-        except StandardError as e:
+        except Exception as e:
             self.log.exception('error getting summary: ')
             reraise(Unparseable, Unparseable(str(e)), sys.exc_info()[2])
 
@@ -315,7 +313,7 @@ class Document:
     def transform_misused_divs_into_paragraphs(self):
         for elem in self.tags(self.html, 'div'):
             # transform <div>s that do not contain other block elements into <p>s
-            if not REGEXES['divToPElementsRe'].search(unicode_type(''.join(map(tostring, list(elem))))):
+            if not REGEXES['divToPElementsRe'].search(unicode_type(''.join(map(tounicode, list(elem))))):
                 # self.debug("Altering %s to p" % (describe(elem)))
                 elem.tag = "p"
                 # print "Fixed element "+describe(elem)
@@ -504,7 +502,7 @@ def main():
     enc = sys.__stdout__.encoding or 'utf-8'
     if options.verbose:
         default_log.filter_level = default_log.DEBUG
-    print (Document(raw, default_log,
+    print(Document(raw, default_log,
             debug=options.verbose,
             keep_elements=options.keep_elements).summary().encode(enc,
                 'replace'))

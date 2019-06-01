@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2011, Kovid Goyal <kovid@kovidgoyal.net>; 2011, Li Fanxi <lifanxi@freemindworld.com>'
@@ -9,7 +8,10 @@ __docformat__ = 'restructuredtext en'
 
 import time
 from functools import partial
-from Queue import Queue, Empty
+try:
+    from queue import Empty, Queue
+except ImportError:
+    from Queue import Empty, Queue
 
 
 from calibre.ebooks.metadata import check_isbn
@@ -175,7 +177,10 @@ class Douban(Source):
     # }}}
 
     def create_query(self, log, title=None, authors=None, identifiers={}):  # {{{
-        from urllib import urlencode
+        try:
+            from urllib.parse import urlencode
+        except ImportError:
+            from urllib import urlencode
         SEARCH_URL = 'https://api.douban.com/book/subjects?'
         ISBN_URL = 'https://api.douban.com/book/subject/isbn/'
         SUBJECT_URL = 'https://api.douban.com/book/subject/'

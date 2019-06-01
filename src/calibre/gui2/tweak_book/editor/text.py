@@ -8,7 +8,7 @@ import os
 import re
 import textwrap
 import unicodedata
-from polyglot.builtins import unicode_type, map, range
+from polyglot.builtins import unicode_type, map, range, as_unicode
 
 from PyQt5.Qt import (
     QColor, QColorDialog, QFont, QFontDatabase, QKeySequence, QPainter, QPalette,
@@ -18,7 +18,7 @@ from PyQt5.Qt import (
 
 import regex
 from calibre import prepare_string_for_xml
-from calibre.ebooks.oeb.base import OEB_DOCS, OEB_STYLES
+from calibre.ebooks.oeb.base import OEB_DOCS, OEB_STYLES, css_text
 from calibre.ebooks.oeb.polish.replace import get_recommended_folders
 from calibre.ebooks.oeb.polish.utils import guess_type
 from calibre.gui2.tweak_book import (
@@ -131,7 +131,7 @@ class TextEdit(PlainTextEdit):
             )
 
         if md.hasFormat(CONTAINER_DND_MIMETYPE):
-            for line in bytes(md.data(CONTAINER_DND_MIMETYPE)).decode('utf-8').splitlines():
+            for line in as_unicode(bytes(md.data(CONTAINER_DND_MIMETYPE))).splitlines():
                 mt = current_container().mime_map.get(line, 'application/octet-stream')
                 if is_mt_ok(mt):
                     yield line, mt, True
@@ -206,17 +206,15 @@ class TextEdit(PlainTextEdit):
             insert_text(md.html())
             return
 
-    @dynamic_property
+    @property
     def is_modified(self):
         ''' True if the document has been modified since it was loaded or since
         the last time is_modified was set to False. '''
+        return self.document().isModified()
 
-        def fget(self):
-            return self.document().isModified()
-
-        def fset(self, val):
-            self.document().setModified(bool(val))
-        return property(fget=fget, fset=fset)
+    @is_modified.setter
+    def is_modified(self, val):
+        self.document().setModified(bool(val))
 
     def sizeHint(self):
         return self.size_hint
@@ -445,7 +443,7 @@ class TextEdit(PlainTextEdit):
             c.movePosition(c.Start), c.movePosition(c.End, c.KeepAnchor)
             text = unicode_type(c.selectedText()).replace(PARAGRAPH_SEPARATOR, '\n').rstrip('\0')
             from calibre.ebooks.oeb.polish.css import sort_sheet
-            text = sort_sheet(current_container(), text).cssText
+            text = css_text(sort_sheet(current_container(), text))
             c.insertText(text)
             c.movePosition(c.Start)
             c.endEditBlock()
@@ -505,7 +503,7 @@ class TextEdit(PlainTextEdit):
         c.movePosition(pos, c.KeepAnchor)
         if hasattr(self.smarts, 'find_text'):
             self.highlighter.join()
-            found, start, end = self.smarts.find_text(pat, c)
+            found, start, end = self.smarts.find_text(pat, c, reverse)
             if not found:
                 return False
         else:
@@ -696,8 +694,8 @@ class TextEdit(PlainTextEdit):
 
     def override_shortcut(self, ev):
         # Let the global cut/copy/paste/undo/redo shortcuts work, this avoids the nbsp
-        # problem as well, since they use the overridden copy() method
-        # instead of the one from Qt, and allows proper customization
+        # problem as well, since they use the overridden createMimeDataFromSelection() method
+        # instead of the one from Qt (which makes copy() work), and allows proper customization
         # of the shortcuts
         if ev in (QKeySequence.Copy, QKeySequence.Cut, QKeySequence.Paste, QKeySequence.Undo, QKeySequence.Redo):
             ev.ignore()

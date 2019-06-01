@@ -2,8 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 import subprocess, re
 from calibre.constants import iswindows, isosx
 
@@ -25,6 +24,7 @@ def get_addresses_for_interface(name, family='AF_INET'):
                 if isinstance(addr, bytes):
                     addr = addr.decode('ascii')
                 yield addr
+
 
 if iswindows:
 

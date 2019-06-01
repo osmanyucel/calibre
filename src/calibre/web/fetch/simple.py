@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-from __future__ import print_function, with_statement
+from __future__ import print_function, with_statement, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2008, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -103,7 +103,7 @@ def save_soup(soup, target):
         f.write(html.encode('utf-8'))
 
 
-class response(str):
+class response(bytes):
 
     def __new__(cls, *args):
         obj = super(response, cls).__new__(cls, *args)
@@ -261,16 +261,14 @@ class RecursiveFetcher(object):
         delta = time.time() - self.last_fetch_at
         if delta < self.delay:
             time.sleep(self.delay - delta)
-        if isinstance(url, unicode_type):
-            url = url.encode('utf-8')
-        # Not sure is this is really needed as I think mechanize
-        # handles quoting automatically, but leaving it
-        # in case it breaks something
+        # mechanize does not handle quoting automatically
         if re.search(r'\s+', url) is not None:
+            if isinstance(url, unicode_type):
+                url = url.encode('utf-8')
             purl = list(urlparse(url))
             for i in range(2, 6):
                 purl[i] = quote(purl[i])
-            url = urlunparse(purl)
+            url = urlunparse(purl).decode('utf-8')
         open_func = getattr(self.browser, 'open_novisit', self.browser.open)
         try:
             with closing(open_func(url, timeout=self.timeout)) as f:
@@ -295,7 +293,7 @@ class RecursiveFetcher(object):
         return data
 
     def start_fetch(self, url):
-        soup = BeautifulSoup(u'<a href="'+url+'" />')
+        soup = BeautifulSoup('<a href="'+url+'" />')
         res = self.process_links(soup, url, 0, into_dir='')
         self.log.debug(url, 'saved to', res)
         return res
@@ -348,7 +346,7 @@ class RecursiveFetcher(object):
                 except Exception:
                     self.log.exception('Could not fetch stylesheet ', iurl)
                     continue
-                stylepath = os.path.join(diskpath, 'style'+str(c)+'.css')
+                stylepath = os.path.join(diskpath, 'style'+unicode_type(c)+'.css')
                 with self.stylemap_lock:
                     self.stylemap[iurl] = stylepath
                 with open(stylepath, 'wb') as x:
@@ -356,7 +354,7 @@ class RecursiveFetcher(object):
                 tag['href'] = stylepath
             else:
                 for ns in tag.findAll(text=True):
-                    src = str(ns)
+                    src = unicode_type(ns)
                     m = self.__class__.CSS_IMPORT_PATTERN.search(src)
                     if m:
                         iurl = m.group(1)
@@ -372,7 +370,7 @@ class RecursiveFetcher(object):
                             self.log.exception('Could not fetch stylesheet ', iurl)
                             continue
                         c += 1
-                        stylepath = os.path.join(diskpath, 'style'+str(c)+'.css')
+                        stylepath = os.path.join(diskpath, 'style'+unicode_type(c)+'.css')
                         with self.stylemap_lock:
                             self.stylemap[iurl] = stylepath
                         with open(stylepath, 'wb') as x:
@@ -406,16 +404,14 @@ class RecursiveFetcher(object):
                         continue
                 try:
                     data = self.fetch_url(iurl)
-                    if data == 'GIF89a\x01':
+                    if data == b'GIF89a\x01':
                         # Skip empty GIF files as PIL errors on them anyway
                         continue
                 except Exception:
                     self.log.exception('Could not fetch image ', iurl)
                     continue
             c += 1
-            fname = ascii_filename('img'+str(c))
-            if isinstance(fname, unicode_type):
-                fname = fname.encode('ascii', 'replace')
+            fname = ascii_filename('img'+unicode_type(c))
             data = self.preprocess_image_ext(data, iurl) if self.preprocess_image_ext is not None else data
             if data is None:
                 continue
@@ -511,7 +507,7 @@ class RecursiveFetcher(object):
                     continue
                 if self.files > self.max_files:
                     return res
-                linkdir = 'link'+str(c) if into_dir else ''
+                linkdir = 'link'+unicode_type(c) if into_dir else ''
                 linkdiskpath = os.path.join(diskpath, linkdir)
                 if not os.path.exists(linkdiskpath):
                     os.mkdir(linkdiskpath)
@@ -520,7 +516,7 @@ class RecursiveFetcher(object):
                     dsrc = self.fetch_url(iurl)
                     newbaseurl = dsrc.newurl
                     if len(dsrc) == 0 or \
-                       len(re.compile('<!--.*?-->', re.DOTALL).sub('', dsrc).strip()) == 0:
+                       len(re.compile(b'<!--.*?-->', re.DOTALL).sub(b'', dsrc).strip()) == 0:
                         raise ValueError('No content at URL %r'%iurl)
                     if callable(self.encoding):
                         dsrc = self.encoding(dsrc)
@@ -544,7 +540,7 @@ class RecursiveFetcher(object):
                     _fname = basename(iurl)
                     if not isinstance(_fname, unicode_type):
                         _fname.decode('latin1', 'replace')
-                    _fname = _fname.encode('ascii', 'replace').replace('%', '').replace(os.sep, '')
+                    _fname = _fname.replace('%', '').replace(os.sep, '')
                     _fname = ascii_filename(_fname)
                     _fname = os.path.splitext(_fname)[0][:120] + '.xhtml'
                     res = os.path.join(linkdiskpath, _fname)

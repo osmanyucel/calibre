@@ -1,14 +1,12 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2012, Kovid Goyal <kovid@kovidgoyal.net>'
 __docformat__ = 'restructuredtext en'
 
 import os, traceback, time, importlib
-from binascii import hexlify, unhexlify
 from multiprocessing.connection import Client
 from threading import Thread
 from contextlib import closing
@@ -18,6 +16,7 @@ from calibre.utils.ipc import eintr_retry_call
 from calibre.utils.ipc.launch import Worker
 from calibre.utils.serialize import msgpack_loads, msgpack_dumps
 from polyglot.builtins import unicode_type, string_or_bytes, environ_item
+from polyglot.binary import as_hex_unicode, from_hex_bytes
 
 
 class WorkerError(Exception):
@@ -131,8 +130,8 @@ def create_worker(env, priority='normal', cwd=None, func='main'):
 
     env = dict(env)
     env.update({
-        'CALIBRE_WORKER_ADDRESS': environ_item(hexlify(msgpack_dumps(listener.address))),
-        'CALIBRE_WORKER_KEY': environ_item(hexlify(auth_key)),
+        'CALIBRE_WORKER_ADDRESS': environ_item(as_hex_unicode(msgpack_dumps(address))),
+        'CALIBRE_WORKER_KEY': environ_item(as_hex_unicode(auth_key)),
         'CALIBRE_SIMPLE_WORKER': environ_item('calibre.utils.ipc.simple_worker:%s' % func),
     })
 
@@ -271,8 +270,8 @@ def compile_code(src):
 
 def main():
     # The entry point for the simple worker process
-    address = msgpack_loads(unhexlify(os.environ['CALIBRE_WORKER_ADDRESS']))
-    key     = unhexlify(os.environ['CALIBRE_WORKER_KEY'])
+    address = msgpack_loads(from_hex_bytes(os.environ['CALIBRE_WORKER_ADDRESS']))
+    key     = from_hex_bytes(os.environ['CALIBRE_WORKER_KEY'])
     with closing(Client(address, authkey=key)) as conn:
         args = eintr_retry_call(conn.recv)
         try:
@@ -301,8 +300,8 @@ def main():
 
 def offload():
     # The entry point for the offload worker process
-    address = msgpack_loads(unhexlify(os.environ['CALIBRE_WORKER_ADDRESS']))
-    key     = unhexlify(os.environ['CALIBRE_WORKER_KEY'])
+    address = msgpack_loads(from_hex_bytes(os.environ['CALIBRE_WORKER_ADDRESS']))
+    key     = from_hex_bytes(os.environ['CALIBRE_WORKER_KEY'])
     func_cache = {}
     with closing(Client(address, authkey=key)) as conn:
         while True:

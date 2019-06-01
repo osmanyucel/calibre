@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __copyright__ = '2011, Kovid Goyal <kovid@kovidgoyal.net>'
 __docformat__ = 'restructuredtext en'
@@ -17,6 +16,7 @@ from polyglot.builtins import reraise
 
 from calibre.constants import iswindows
 from calibre.utils.filenames import atomic_rename
+from polyglot.builtins import error_message, getcwd
 
 Context_, undefined = dukpy.Context, dukpy.undefined
 
@@ -122,7 +122,7 @@ def readfile(path, enc='utf-8'):
     except UnicodeDecodeError as e:
         return None, '', 'Failed to decode the file: %s with specified encoding: %s' % (path, enc)
     except EnvironmentError as e:
-        return [None, errno.errorcode[e.errno], 'Failed to read from file: %s with error: %s' % (path, e.message or e)]
+        return [None, errno.errorcode[e.errno], 'Failed to read from file: %s with error: %s' % (path, error_message(e) or e)]
 
 
 def atomic_write(name, raw):
@@ -143,7 +143,7 @@ def writefile(path, data, enc='utf-8'):
     except UnicodeEncodeError as e:
         return ['', 'Failed to encode the data for file: %s with specified encoding: %s' % (path, enc)]
     except EnvironmentError as e:
-        return [errno.errorcode[e.errno], 'Failed to write to file: %s with error: %s' % (path, e.message or e)]
+        return [errno.errorcode[e.errno], 'Failed to write to file: %s with error: %s' % (path, error_message(e) or e)]
     return [None, None]
 
 
@@ -217,7 +217,7 @@ class JSError(Exception):
     def as_dict(self):
         return {
             'name':self.name or undefined,
-            'message': self.js_message or self.message,
+            'message': self.js_message or error_message(self),
             'fileName': self.fileName or undefined,
             'lineNumber': self.lineNumber or undefined,
             'stack': self.stack or undefined
@@ -255,12 +255,12 @@ class Context(object):
     def __init__(self, base_dirs=(), builtin_modules=None):
         self._ctx = Context_()
         self.g = self._ctx.g
-        self.g.Duktape.load_file = partial(load_file, base_dirs or (os.getcwdu(),), builtin_modules or {})
+        self.g.Duktape.load_file = partial(load_file, base_dirs or (getcwd(),), builtin_modules or {})
         self.g.Duktape.pyreadfile = readfile
         self.g.Duktape.pywritefile = writefile
         self.g.Duktape.create_context = partial(create_context, base_dirs)
         self.g.Duktape.run_in_context = run_in_context
-        self.g.Duktape.cwd = os.getcwdu
+        self.g.Duktape.cwd = getcwd
         self.g.Duktape.sha1sum = sha1sum
         self.g.Duktape.dirname = os.path.dirname
         self.g.Duktape.errprint = lambda *args: print(*args, file=sys.stderr)

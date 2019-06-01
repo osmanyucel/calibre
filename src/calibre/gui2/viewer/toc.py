@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2012, Kovid Goyal <kovid@kovidgoyal.net>'
@@ -150,6 +149,7 @@ class TOCItem(QStandardItem):
             text = re.sub(r'\s', ' ', text)
         self.title = text
         self.parent = parent
+        self.href = toc.href
         QStandardItem.__init__(self, text if text else '')
         self.abspath = toc.abspath if toc.href else None
         self.fragment = toc.fragment
@@ -379,6 +379,14 @@ class TOC(QStandardItemModel):
         for item in self.all_items:
             if primary_contains(query, item.text()):
                 yield item
+
+    def find_indices_by_href(self, query):
+        for item in self.all_items:
+            q = (item.href or '')
+            if item.fragment:
+                q += '#' + item.fragment
+            if primary_contains(query, q):
+                yield self.indexFromItem(item)
 
     def search(self, query):
         cq = self.current_query

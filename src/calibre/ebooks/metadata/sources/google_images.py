@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2013, Kovid Goyal <kovid@kovidgoyal.net>'
@@ -65,7 +64,10 @@ class GoogleImages(Source):
 
     def get_image_urls(self, title, author, log, abort, timeout):
         from calibre.utils.cleantext import clean_ascii_chars
-        from urllib import urlencode
+        try:
+            from urllib.parse import urlencode
+        except ImportError:
+            from urllib import urlencode
         import json
         from collections import OrderedDict
         ans = OrderedDict()
@@ -95,7 +97,10 @@ class GoogleImages(Source):
 
 
 def test():
-    from Queue import Queue
+    try:
+        from queue import Queue
+    except ImportError:
+        from Queue import Queue
     from threading import Event
     from calibre.utils.logging import default_log
     p = GoogleImages(None)

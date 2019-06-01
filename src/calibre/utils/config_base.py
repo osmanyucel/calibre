@@ -12,7 +12,7 @@ from collections import defaultdict
 from copy import deepcopy
 
 from calibre.utils.lock import ExclusiveFile
-from calibre.constants import config_dir, CONFIG_DIR_MODE, ispy3, preferred_encoding
+from calibre.constants import config_dir, CONFIG_DIR_MODE, ispy3, preferred_encoding, filesystem_encoding, iswindows
 from polyglot.builtins import unicode_type, iteritems, map
 
 plugin_dir = os.path.join(config_dir, 'plugins')
@@ -38,6 +38,13 @@ def to_json(obj):
     raise TypeError(repr(obj) + ' is not JSON serializable')
 
 
+def safe_to_json(obj):
+    try:
+        return to_json(obj)
+    except Exception:
+        pass
+
+
 def from_json(obj):
     custom = obj.get('__class__')
     if custom is not None:
@@ -52,9 +59,33 @@ def from_json(obj):
     return obj
 
 
-def json_dumps(obj):
+def force_unicode(x):
+    try:
+        return x.decode('mbcs' if iswindows else preferred_encoding)
+    except UnicodeDecodeError:
+        try:
+            return x.decode(filesystem_encoding)
+        except UnicodeDecodeError:
+            return x.decode('utf-8', 'replace')
+
+
+def force_unicode_recursive(obj):
+    if isinstance(obj, bytes):
+        return force_unicode(obj)
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(map(force_unicode_recursive, obj))
+    if isinstance(obj, dict):
+        return {force_unicode_recursive(k): force_unicode_recursive(v) for k, v in iteritems(obj)}
+    return obj
+
+
+def json_dumps(obj, ignore_unserializable=False):
     import json
-    ans = json.dumps(obj, indent=2, default=to_json, sort_keys=True, ensure_ascii=False)
+    try:
+        ans = json.dumps(obj, indent=2, default=safe_to_json if ignore_unserializable else to_json, sort_keys=True, ensure_ascii=False)
+    except UnicodeDecodeError:
+        obj = force_unicode_recursive(obj)
+        ans = json.dumps(obj, indent=2, default=safe_to_json if ignore_unserializable else to_json, sort_keys=True, ensure_ascii=False)
     if not isinstance(ans, bytes):
         ans = ans.encode('utf-8')
     return ans
@@ -288,9 +319,9 @@ class OptionSet(object):
 
         return opts
 
-    def serialize(self, opts):
+    def serialize(self, opts, ignore_unserializable=False):
         data = {pref.name: getattr(opts, pref.name, pref.default) for pref in self.preferences}
-        return json_dumps(data)
+        return json_dumps(data, ignore_unserializable=ignore_unserializable)
 
 
 class ConfigInterface(object):
@@ -351,7 +382,7 @@ class Config(ConfigInterface):
                 migrate = bool(src)
         ans = self.option_set.parse_string(src)
         if migrate:
-            new_src = self.option_set.serialize(ans)
+            new_src = self.option_set.serialize(ans, ignore_unserializable=True)
             with ExclusiveFile(self.config_file_path) as f:
                 f.seek(0), f.truncate()
                 f.write(new_src)
@@ -579,12 +610,20 @@ def exec_tweaks(path):
 def read_custom_tweaks():
     make_config_dir()
     tf = tweaks_file()
+    ans = {}
     if os.path.exists(tf):
         with open(tf, 'rb') as f:
             raw = f.read()
-        return json_loads(raw)
+        raw = raw.strip()
+        if not raw:
+            return ans
+        try:
+            return json_loads(raw)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            return ans
     old_tweaks_file = tf.rpartition(u'.')[0] + u'.py'
-    ans = {}
     if os.path.exists(old_tweaks_file):
         ans = exec_tweaks(old_tweaks_file)
         ans = make_unicode(ans)
@@ -598,7 +637,11 @@ def default_tweaks_raw():
 
 def read_tweaks():
     default_tweaks = exec_tweaks(default_tweaks_raw())
-    default_tweaks.update(read_custom_tweaks())
+    try:
+        custom_tweaks = read_custom_tweaks()
+    except Exception:
+        custom_tweaks = {}
+    default_tweaks.update(custom_tweaks)
     return default_tweaks
 
 

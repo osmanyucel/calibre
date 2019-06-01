@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=utf-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__ = 'GPL v3'
 __copyright__ = '2013, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -200,8 +199,11 @@ class BookmarkManager(QWidget):
             self, 'export-viewer-bookmarks', _('Export bookmarks'),
             filters=[(_('Saved bookmarks'), ['calibre-bookmarks'])], all_files=False, initial_filename='bookmarks.calibre-bookmarks')
         if filename:
+            data = json.dumps(self.get_bookmarks(), indent=True)
+            if not isinstance(data, bytes):
+                data = data.encode('utf-8')
             with lopen(filename, 'wb') as fileobj:
-                fileobj.write(json.dumps(self.get_bookmarks(), indent=True))
+                fileobj.write(data)
 
     def import_bookmarks(self):
         files = choose_files(self, 'export-viewer-bookmarks', _('Import bookmarks'),

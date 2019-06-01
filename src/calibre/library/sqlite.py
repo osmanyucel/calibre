@@ -7,7 +7,7 @@ __docformat__ = 'restructuredtext en'
 Wrapper for multi-threaded access to a single sqlite database connection. Serializes
 all calls.
 '''
-import sqlite3 as sqlite, traceback, time, uuid, sys, os
+import sqlite3 as sqlite, traceback, time, uuid, os
 from sqlite3 import IntegrityError, OperationalError
 from threading import Thread
 from threading import RLock
@@ -17,7 +17,7 @@ from functools import partial
 from calibre.ebooks.metadata import title_sort, author_to_author_sort
 from calibre.utils.date import parse_date, isoformat, local_tz, UNDEFINED_DATE
 from calibre import isbytestring, force_unicode
-from calibre.constants import iswindows, DEBUG, plugins
+from calibre.constants import iswindows, DEBUG, plugins, plugins_loc
 from calibre.utils.icu import sort_key
 from calibre import prints
 from polyglot.builtins import unicode_type, cmp
@@ -115,9 +115,14 @@ class Concatenate(object):
             self.ans.append(value)
 
     def finalize(self):
-        if not self.ans:
-            return None
-        return self.sep.join(self.ans)
+        try:
+            if not self.ans:
+                return None
+            return self.sep.join(self.ans)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 class SortedConcatenate(object):
@@ -132,9 +137,14 @@ class SortedConcatenate(object):
             self.ans[ndx] = value
 
     def finalize(self):
-        if len(self.ans) == 0:
-            return None
-        return self.sep.join(map(self.ans.get, sorted(self.ans.keys())))
+        try:
+            if len(self.ans) == 0:
+                return None
+            return self.sep.join(map(self.ans.get, sorted(self.ans.keys())))
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 class SortedConcatenateBar(SortedConcatenate):
@@ -155,7 +165,12 @@ class IdentifiersConcat(object):
         self.ans.append(u'%s:%s'%(key, val))
 
     def finalize(self):
-        return ','.join(self.ans)
+        try:
+            return ','.join(self.ans)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 class AumSortedConcatenate(object):
@@ -169,13 +184,18 @@ class AumSortedConcatenate(object):
             self.ans[ndx] = ':::'.join((author, sort, link))
 
     def finalize(self):
-        keys = self.ans.keys()
-        l = len(keys)
-        if l == 0:
-            return None
-        if l == 1:
-            return self.ans[keys[0]]
-        return ':#:'.join([self.ans[v] for v in sorted(keys)])
+        try:
+            keys = tuple(self.ans)
+            l = len(keys)
+            if l == 0:
+                return None
+            if l == 1:
+                return self.ans[keys[0]]
+            return ':#:'.join([self.ans[v] for v in sorted(keys)])
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 class Connection(sqlite.Connection):
@@ -218,7 +238,7 @@ def icu_collator(s1, s2):
 def load_c_extensions(conn, debug=DEBUG):
     try:
         conn.enable_load_extension(True)
-        ext_path = os.path.join(sys.extensions_location, 'sqlite_custom.'+
+        ext_path = os.path.join(plugins_loc, 'sqlite_custom.'+
                 ('pyd' if iswindows else 'so'))
         conn.load_extension(ext_path)
         conn.enable_load_extension(False)
@@ -231,8 +251,7 @@ def load_c_extensions(conn, debug=DEBUG):
 
 
 def do_connect(path, row_factory=None):
-    conn = sqlite.connect(path, factory=Connection,
-                                detect_types=sqlite.PARSE_DECLTYPES|sqlite.PARSE_COLNAMES)
+    conn = sqlite.connect(path, factory=Connection)
     conn.execute('pragma cache_size=-5000')
     encoding = conn.execute('pragma encoding').fetchone()[0]
     conn.create_aggregate('sortconcat', 2, SortedConcatenate)

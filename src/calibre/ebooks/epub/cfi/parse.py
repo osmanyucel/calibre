@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=utf-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__ = 'GPL v3'
 __copyright__ = '2014, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -197,7 +196,7 @@ def cfi_sort_key(cfi, only_path=True):
         return ()
     if not pcfi:
         import sys
-        print ('Failed to parse CFI: %r' % pcfi, file=sys.stderr)
+        print('Failed to parse CFI: %r' % pcfi, file=sys.stderr)
         return ()
     steps = get_steps(pcfi)
     step_nums = tuple(s.get('num', 0) for s in steps)
@@ -217,7 +216,7 @@ def decode_cfi(root, cfi):
         return
     if not pcfi:
         import sys
-        print ('Failed to parse CFI: %r' % pcfi, file=sys.stderr)
+        print('Failed to parse CFI: %r' % pcfi, file=sys.stderr)
         return
     steps = get_steps(pcfi)
     ans = root

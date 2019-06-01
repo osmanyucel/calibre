@@ -7,7 +7,7 @@ __docformat__ = 'restructuredtext en'
 The database used to store ebook metadata
 '''
 import os, sys, shutil, glob, time, functools, traceback, re, \
-        json, uuid, hashlib, copy, types, numbers
+        json, uuid, hashlib, copy, numbers
 from collections import defaultdict, namedtuple
 import threading, random
 
@@ -47,7 +47,7 @@ from calibre.db.lazy import FormatMetadata, FormatsList
 from calibre.db.categories import Tag, CATEGORY_SORTS
 from calibre.utils.localization import (canonicalize_lang,
         calibre_langcode_to_name)
-from polyglot.builtins import iteritems, unicode_type, string_or_bytes
+from polyglot.builtins import iteritems, unicode_type, string_or_bytes, map
 
 copyfile = os.link if hasattr(os, 'link') else shutil.copyfile
 SPOOL_SIZE = 30*1024*1024
@@ -75,43 +75,36 @@ class LibraryDatabase2(LibraryDatabase, SchemaUpgrade, CustomColumns):
     PATH_LIMIT = 40 if 'win32' in sys.platform else 100
     WINDOWS_LIBRARY_PATH_LIMIT = 75
 
-    @dynamic_property
+    @property
     def user_version(self):
-        doc = 'The user version of this database'
+        'The user version of this database'
+        return self.conn.get('pragma user_version;', all=False)
 
-        def fget(self):
-            return self.conn.get('pragma user_version;', all=False)
+    @user_version.setter
+    def user_version(self, val):
+        self.conn.execute('pragma user_version=%d'%int(val))
+        self.conn.commit()
 
-        def fset(self, val):
-            self.conn.execute('pragma user_version=%d'%int(val))
-            self.conn.commit()
-
-        return property(doc=doc, fget=fget, fset=fset)
-
-    @dynamic_property
+    @property
     def library_id(self):
-        doc = ('The UUID for this library. As long as the user only operates'
-                ' on libraries with calibre, it will be unique')
+        '''The UUID for this library. As long as the user only operates on libraries with calibre, it will be unique'''
+        if self._library_id_ is None:
+            ans = self.conn.get('SELECT uuid FROM library_id', all=False)
+            if ans is None:
+                ans = str(uuid.uuid4())
+                self.library_id = ans
+            else:
+                self._library_id_ = ans
+        return self._library_id_
 
-        def fget(self):
-            if self._library_id_ is None:
-                ans = self.conn.get('SELECT uuid FROM library_id', all=False)
-                if ans is None:
-                    ans = str(uuid.uuid4())
-                    self.library_id = ans
-                else:
-                    self._library_id_ = ans
-            return self._library_id_
-
-        def fset(self, val):
-            self._library_id_ = unicode_type(val)
-            self.conn.executescript('''
-                    DELETE FROM library_id;
-                    INSERT INTO library_id (uuid) VALUES ("%s");
-                    '''%self._library_id_)
-            self.conn.commit()
-
-        return property(doc=doc, fget=fget, fset=fset)
+    @library_id.setter
+    def library_id(self, val):
+        self._library_id_ = unicode_type(val)
+        self.conn.executescript('''
+                DELETE FROM library_id;
+                INSERT INTO library_id (uuid) VALUES ("%s");
+                '''%self._library_id_)
+        self.conn.commit()
 
     def connect(self):
         if iswindows and len(self.library_path) + 4*self.PATH_LIMIT + 10 > 259:
@@ -147,11 +140,12 @@ class LibraryDatabase2(LibraryDatabase, SchemaUpgrade, CustomColumns):
     def exists_at(cls, path):
         return path and os.path.exists(os.path.join(path, 'metadata.db'))
 
+    get_data_as_dict = get_data_as_dict
+
     def __init__(self, library_path, row_factory=False, default_prefs=None,
             read_only=False, is_second_db=False, progress_callback=None,
             restore_all_prefs=False):
         self.is_second_db = is_second_db
-        self.get_data_as_dict = types.MethodType(get_data_as_dict, self, LibraryDatabase2)
         try:
             if isbytestring(library_path):
                 library_path = library_path.decode(filesystem_encoding)
@@ -610,14 +604,13 @@ class LibraryDatabase2(LibraryDatabase, SchemaUpgrade, CustomColumns):
         if not authors:
             authors = _('Unknown')
         author = ascii_filename(authors.split(',')[0].replace('|', ',')
-                    )[:self.PATH_LIMIT].decode('ascii', 'replace')
+                    )[:self.PATH_LIMIT]
         title  = ascii_filename(self.title(id, index_is_id=True)
-                    )[:self.PATH_LIMIT].decode('ascii', 'replace')
+                    )[:self.PATH_LIMIT]
         while author[-1] in (' ', '.'):
             author = author[:-1]
         if not author:
-            author = ascii_filename(_('Unknown')).decode(
-                    'ascii', 'replace')
+            author = ascii_filename(_('Unknown'))
         path = author + '/' + title + ' (%d)'%id
         return path
 
@@ -629,9 +622,9 @@ class LibraryDatabase2(LibraryDatabase, SchemaUpgrade, CustomColumns):
         if not authors:
             authors = _('Unknown')
         author = ascii_filename(authors.split(',')[0].replace('|', ',')
-                    )[:self.PATH_LIMIT].decode('ascii', 'replace')
+                    )[:self.PATH_LIMIT]
         title  = ascii_filename(self.title(id, index_is_id=True)
-                    )[:self.PATH_LIMIT].decode('ascii', 'replace')
+                    )[:self.PATH_LIMIT]
         name   = title + ' - ' + author
         while name.endswith('.'):
             name = name[:-1]
@@ -3508,9 +3501,9 @@ class LibraryDatabase2(LibraryDatabase, SchemaUpgrade, CustomColumns):
                             if mi.series_index is None else mi.series_index
             aus = mi.author_sort if mi.author_sort else self.author_sort_from_authors(mi.authors)
             title = mi.title
-            if isinstance(aus, str):
+            if isinstance(aus, bytes):
                 aus = aus.decode(preferred_encoding, 'replace')
-            if isinstance(title, str):
+            if isinstance(title, bytes):
                 title = title.decode(preferred_encoding)
             obj = self.conn.execute('INSERT INTO books(title, series_index, author_sort) VALUES (?, ?, ?)',
                               (title, series_index, aus))
@@ -3552,7 +3545,7 @@ class LibraryDatabase2(LibraryDatabase, SchemaUpgrade, CustomColumns):
         if not mi.authors:
             mi.authors = [_('Unknown')]
         aus = mi.author_sort if mi.author_sort else self.author_sort_from_authors(mi.authors)
-        if isinstance(aus, str):
+        if isinstance(aus, bytes):
             aus = aus.decode(preferred_encoding, 'replace')
         title = mi.title if isinstance(mi.title, unicode_type) else \
                 mi.title.decode(preferred_encoding, 'replace')

@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2011, Kovid Goyal <kovid@kovidgoyal.net>'
@@ -20,7 +19,7 @@ from calibre.ebooks.mobi.utils import (decode_hex_number, decint,
 from calibre.utils.imghdr import what
 from calibre.ebooks.mobi.debug import format_bytes
 from calibre.ebooks.mobi.debug.headers import TextRecord
-from polyglot.builtins import unicode_type, range, iteritems
+from polyglot.builtins import unicode_type, range, iteritems, as_bytes
 
 
 class TagX(object):  # {{{
@@ -276,7 +275,7 @@ class Tag(object):  # {{{
         if tag_type in self.TAG_MAP:
             self.attr, self.desc = self.TAG_MAP[tag_type]
         else:
-            print ('Unknown tag value: %%s'%tag_type)
+            print('Unknown tag value: %%s'%tag_type)
             self.desc = '??Unknown (tag value: %d)'%tag_type
             self.attr = 'unknown'
 
@@ -461,7 +460,7 @@ class CNCX(object):  # {{{
                     except:
                         byts = raw[pos:]
                         r = format_bytes(byts)
-                        print ('CNCX entry at offset %d has unknown format %s'%(
+                        print('CNCX entry at offset %d has unknown format %s'%(
                             pos+record_offset, r))
                         self.records[pos+record_offset] = r
                         pos = len(raw)
@@ -606,7 +605,7 @@ class TBSIndexing(object):  # {{{
 
         def bin4(num):
             ans = bin(num)[2:]
-            return bytes('0'*(4-len(ans)) + ans)
+            return as_bytes('0'*(4-len(ans)) + ans)
 
         def repr_extra(x):
             return str({bin4(k):v for k, v in iteritems(extra)})
@@ -629,7 +628,7 @@ class TBSIndexing(object):  # {{{
                     import traceback
                     traceback.print_exc()
                     a = []
-                    print ('Failed to decode TBS bytes for record: %d'%r.idx)
+                    print('Failed to decode TBS bytes for record: %d'%r.idx)
                 ans += a
             if byts:
                 sbyts = tuple(hex(b)[2:] for b in byts)
@@ -789,14 +788,14 @@ class MOBIFile(object):  # {{{
                     self.index_record.indices, self.mobi_header.type_raw)
 
     def print_header(self, f=sys.stdout):
-        print (str(self.palmdb).encode('utf-8'), file=f)
-        print (file=f)
-        print ('Record headers:', file=f)
+        print(str(self.palmdb).encode('utf-8'), file=f)
+        print(file=f)
+        print('Record headers:', file=f)
         for i, r in enumerate(self.records):
-            print ('%6d. %s'%(i, r.header), file=f)
+            print('%6d. %s'%(i, r.header), file=f)
 
-        print (file=f)
-        print (str(self.mobi_header).encode('utf-8'), file=f)
+        print(file=f)
+        print(str(self.mobi_header).encode('utf-8'), file=f)
 # }}}
 
 

@@ -23,17 +23,23 @@ class BostonGlobeSubscription(BasicNewsRecipe):
     __author__ = 'Rob Freundlich'
     description = 'Boston Globe with full articles for subscribers'
     language = 'en'
-    INDEX = 'https://www.bostonglobe.com/todayspaper/%Y/%m/%d'
+    INDEX = 'https://www3.bostonglobe.com/todayspaper/%Y/%m/%d?arc404=true'
     todaysDate = date.today().strftime("%d/%m/%Y")
     timefmt = ' [%a, %d %b, %Y]'
-    needs_subscription = 'optional'
     keep_only_tags = [
+        dict(attrs={'class': lambda x: x and (
+            x.startswith('headline |') or x.startswith('subheader |') or
+            x.startswith('byline |') or x.startswith('image |') or
+            x.startswith('lead |') or x.startswith('body |')
+        )}),
         classes('comic article__title methode__story article-header__headline lead-media figure article-header__byline article-content'),
     ]
     remove_tags = [
-        classes('inline-newsletter ad skip-nav article-footer'),
+        classes('inline-newsletter ad skip-nav article-footer sharebar'),
+        dict(id='continue_button'),
         dict(name=['meta', 'link'])
     ]
+    remove_tags_after = dict(attrs={'class': lambda x:x and x.startswith('body |')})
     remove_attributes = ['style']
     no_stylesheets = True
     # simultaneous_downloads = 1
@@ -68,23 +74,6 @@ class BostonGlobeSubscription(BasicNewsRecipe):
 
     def image_url_processor(self, baseurl, url):
         return self.absolutize_url(url)
-
-    def get_browser(self):
-        br = BasicNewsRecipe.get_browser(self)
-        if self.username is not None and self.password is not None:
-            def is_login_form(form):
-                return form.action == "https://www.bostonglobe.com/eom/SysConfig/WebPortal/BostonGlobe/Framework/regi/login2.jsp"
-
-            # br.set_debug_http(True)
-            # br.set_debug_responses(True)
-            # br.set_debug_redirects(True)
-            br.open(
-                "https://www.bostonglobe.com/login?p1=BGHeader_LogIn")
-            br.select_form(predicate=is_login_form)
-            br["username"] = self.username
-            br["password"] = self.password
-            br.submit()
-        return br
 
     def absolutize_url(self, url):
         if url.startswith("//"):

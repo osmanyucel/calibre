@@ -29,7 +29,7 @@ from calibre.gui2.viewer.toc import TOC
 from calibre.gui2.viewer.ui import Main as MainWindow
 from calibre.gui2.widgets import ProgressIndicator
 from calibre.ptempfile import reset_base_dir
-from calibre.utils.config import Config, JSONConfig, StringConfig
+from calibre.utils.config import JSONConfig, StringConfig
 from calibre.utils.ipc import RC, viewer_socket_address
 from calibre.utils.localization import canonicalize_lang, get_lang, lang_as_iso639_1
 from calibre.utils.zipfile import BadZipfile
@@ -1083,13 +1083,24 @@ class EbookViewer(MainWindow):
                             self.pending_goto_page = open_at
                         else:
                             self.goto_page(open_at, loaded_check=False)
-                    elif open_at.startswith('toc:'):
-                        index = self.toc_model.search(open_at[4:])
-                        if index.isValid():
+                    else:
+                        target_index = None
+                        if open_at.startswith('toc:'):
+                            index = self.toc_model.search(open_at[4:])
+                            if index.isValid():
+                                target_index = index
+                        elif open_at.startswith('toc-href:'):
+                            for index in self.toc_model.find_indices_by_href(open_at[len('toc-href:'):]):
+                                if index.isValid():
+                                    target_index = index
+                                    break
+                        if target_index is None:
+                            self.next_document()
+                        else:
                             if self.resize_in_progress:
-                                self.pending_toc_click = index
+                                self.pending_toc_click = target_index
                             else:
-                                self.toc_clicked(index, force=True)
+                                self.toc_clicked(target_index, force=True)
 
     def set_vscrollbar_value(self, pagenum):
         self.vertical_scrollbar.blockSignals(True)
@@ -1185,6 +1196,7 @@ class EbookViewer(MainWindow):
             self.iterator.__exit__(*args)
 
     def read_settings(self):
+        from calibre.gui2.viewer.config import config
         c = config().parse()
         if c.remember_window_size:
             wg = vprefs.get('viewer_window_geometry', None)
@@ -1202,10 +1214,7 @@ class EbookViewer(MainWindow):
 
 def config(defaults=None):
     desc = _('Options to control the e-book viewer')
-    if defaults is None:
-        c = Config('viewer', desc)
-    else:
-        c = StringConfig(defaults, desc)
+    c = StringConfig(defaults or '', desc)
 
     c.add_opt('raise_window', ['--raise-window'], default=False,
               help=_('If specified, viewer window will try to come to the '
@@ -1221,7 +1230,9 @@ def config(defaults=None):
         help=_('The position at which to open the specified book. The position is '
                'a location as displayed in the top left corner of the viewer. '
                'Alternately, you can use the form toc:something and it will open '
-               'at the location of the first Table of Contents entry that contains the string "something".'))
+               'at the location of the first Table of Contents entry that contains '
+               'the string "something". You can also use toc-href:something '
+               'to go to a location matching an internal file/id of the book.'))
     c.add_opt('continue_reading', ['--continue'], default=False,
         help=_('Continue reading at the previously opened book'))
 
@@ -1308,7 +1319,7 @@ def main(args=sys.argv):
     opts, args = parser.parse_args(args)
     open_at = None
     if opts.open_at is not None:
-        if opts.open_at.startswith('toc:'):
+        if ':' in opts.open_at:
             open_at = opts.open_at
         else:
             open_at = float(opts.open_at.replace(',', '.'))

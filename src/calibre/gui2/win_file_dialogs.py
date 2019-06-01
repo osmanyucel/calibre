@@ -2,14 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 import sys, subprocess, struct, os
 from threading import Thread
 from uuid import uuid4
 
 from PyQt5.Qt import pyqtSignal, QEventLoop, Qt
-from polyglot.builtins import string_or_bytes
+from polyglot.builtins import string_or_bytes, filter
 
 is64bit = sys.maxsize > (1 << 32)
 base = sys.extensions_location if hasattr(sys, 'new_app_layout') else os.path.dirname(sys.executable)
@@ -359,7 +358,7 @@ def test(helper=HELPER):
     if server.err_msg is not None:
         raise RuntimeError(server.err_msg)
     server.join(2)
-    parts = filter(None, server.data.split(b'\0'))
+    parts = list(filter(None, server.data.split(b'\0')))
     if parts[0] != secret:
         raise RuntimeError('Did not get back secret: %r != %r' % (secret, parts[0]))
     q = parts[1].decode('utf-8')

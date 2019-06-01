@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-from __future__ import (unicode_literals, division, absolute_import, print_function)
 store_version = 5  # Needed for dynamic plugin loading
 
 __license__ = 'GPL 3'
@@ -10,8 +10,11 @@ __docformat__ = 'restructuredtext en'
 import base64
 import mimetypes
 import re
-import urllib
 from contextlib import closing
+try:
+    from urllib.parse import quote_plus
+except ImportError:
+    from urllib import quote_plus
 
 from lxml import etree
 
@@ -31,7 +34,7 @@ def fix_url(url):
 
 
 def search(query, max_results=10, timeout=60, write_raw_to=None):
-    url = 'http://m.gutenberg.org/ebooks/search.opds/?query=' + urllib.quote_plus(query)
+    url = 'http://m.gutenberg.org/ebooks/search.opds/?query=' + quote_plus(query)
 
     counter = max_results
     br = browser(user_agent='calibre/'+__version__)
@@ -130,4 +133,4 @@ class GutenbergStore(BasicStoreConfig, OpenSearchOPDSStore):
 if __name__ == '__main__':
     import sys
     for result in search(' '.join(sys.argv[1:]), write_raw_to='/t/gutenberg.html'):
-        print (result)
+        print(result)

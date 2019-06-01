@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-from __future__ import (unicode_literals, division, absolute_import, print_function)
 
 __license__ = 'GPL 3'
 __copyright__ = '2011, John Schember <john@nachtimwald.com>'
@@ -291,9 +291,9 @@ class Matches(QAbstractItemModel):
         if not self.matches:
             return
         descending = order == Qt.DescendingOrder
-        self.all_matches.sort(None,
-            lambda x: sort_key(unicode_type(self.data_as_text(x, col))),
-            descending)
+        self.all_matches.sort(
+            key=lambda x: sort_key(unicode_type(self.data_as_text(x, col))),
+            reverse=descending)
         self.reorder_matches()
         if reset:
             self.beginResetModel(), self.endResetModel()

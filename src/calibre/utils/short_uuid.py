@@ -2,8 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
 
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 '''
 Generate UUID encoded using a user specified alphabet.
@@ -53,6 +52,7 @@ class ShortUUID(object):
 
     def decode(self, encoded):
         return _uuid.UUID(int=string_to_num(encoded, self.alphabet_map, self.alphabet_len))
+
 
 _global_instance = ShortUUID()
 uuid4 = _global_instance.uuid4

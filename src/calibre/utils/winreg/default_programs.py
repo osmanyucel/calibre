@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=utf-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__ = 'GPL v3'
 __copyright__ = '2015, Kovid Goyal <kovid at kovidgoyal.net>'
@@ -74,7 +73,7 @@ def check_allowed():
         raise NotAllowed('Not allowed to create associations for portable installs')
     if sys.getwindowsversion()[:2] < (6, 2):
         raise NotAllowed('Not allowed to create associations for windows versions older than Windows 8')
-    if b'CALIBRE_NO_DEFAULT_PROGRAMS' in os.environ:
+    if 'CALIBRE_NO_DEFAULT_PROGRAMS' in os.environ:
         raise NotAllowed('Disabled by the CALIBRE_NO_DEFAULT_PROGRAMS environment variable')
 
 

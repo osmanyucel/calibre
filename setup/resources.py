@@ -11,8 +11,8 @@ from zlib import compress
 from itertools import chain
 is_ci = os.environ.get('CI', '').lower() == 'true'
 
-from setup import Command, basenames, __appname__, download_securely
-from polyglot.builtins import codepoint_to_chr, itervalues, iteritems
+from setup import Command, basenames, __appname__, download_securely, dump_json
+from polyglot.builtins import codepoint_to_chr, itervalues, iteritems, only_unicode_recursive
 
 
 def get_opts_from_parser(parser):
@@ -270,7 +270,7 @@ class RecentUAs(Command):  # {{{
         from setup.browser_data import get_data
         data = get_data()
         with open(self.UA_PATH, 'wb') as f:
-            f.write(json.dumps(data, indent=2, ensure_ascii=False).encode('utf-8'))
+            f.write(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True).encode('utf-8'))
 # }}}
 
 
@@ -358,7 +358,7 @@ class Resources(Command):  # {{{
                             get_opts_from_parser(p)]
 
             with open(dest, 'wb') as f:
-                f.write(msgpack_dumps(complete))
+                f.write(msgpack_dumps(only_unicode_recursive(complete)))
 
         self.info('\tCreating template-functions.json')
         dest = self.j(self.RESOURCES, 'template-functions.json')
@@ -374,8 +374,7 @@ class Resources(Command):  # {{{
                 continue
             lines = ''.join(lines)
             function_dict[obj.name] = lines
-        import json
-        json.dump(function_dict, open(dest, 'wb'), indent=4)
+        dump_json(function_dict, dest)
 
         self.info('\tCreating editor-functions.json')
         dest = self.j(self.RESOURCES, 'editor-functions.json')
@@ -386,18 +385,18 @@ class Resources(Command):  # {{{
                 src = ''.join(inspect.getsourcelines(func)[0][1:])
             except Exception:
                 continue
-            src = src.replace('def ' + func.func_name, 'def replace')
+            src = src.replace('def ' + func.__name__, 'def replace')
             imports = ['from %s import %s' % (x.__module__, x.__name__) for x in func.imports]
             if imports:
                 src = '\n'.join(imports) + '\n\n' + src
             function_dict[func.name] = src
-        json.dump(function_dict, open(dest, 'wb'), indent=4)
+        dump_json(function_dict, dest)
         self.info('\tCreating user-manual-translation-stats.json')
         d = {}
         for lc, stats in iteritems(json.load(open(self.j(self.d(self.SRC), 'manual', 'locale', 'completed.json')))):
             total = sum(itervalues(stats))
             d[lc] = stats['translated'] / float(total)
-        json.dump(d, open(self.j(self.RESOURCES, 'user-manual-translation-stats.json'), 'wb'), indent=4)
+        dump_json(d, self.j(self.RESOURCES, 'user-manual-translation-stats.json'))
 
     def clean(self):
         for x in ('scripts', 'ebook-convert-complete'):

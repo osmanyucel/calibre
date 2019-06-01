@@ -6,7 +6,7 @@ __license__   = 'GPL v3'
 __copyright__ = '2009, Kovid Goyal <kovid@kovidgoyal.net>'
 __docformat__ = 'restructuredtext en'
 
-import os, locale, re, io
+import os, locale, re, io, sys
 from gettext import GNUTranslations, NullTranslations
 
 from polyglot.builtins import is_py3, iteritems, unicode_type
@@ -155,6 +155,8 @@ def get_translator(bcp_47_code):
     lang = {'pt':'pt_BR', 'zh':'zh_CN'}.get(lang, lang)
     available = available_translations()
     found = True
+    if lang == 'en' or lang.startswith('en_'):
+        return found, lang, NullTranslations()
     if lang not in available:
         lang = {'pt':'pt_BR', 'zh':'zh_CN'}.get(parts[0], parts[0])
         if lang not in available:
@@ -163,7 +165,7 @@ def get_translator(bcp_47_code):
                 lang = 'en'
             found = False
     if lang == 'en':
-        return found, lang, NullTranslations()
+        return True, lang, NullTranslations()
     return found, lang, get_single_translator(lang)
 
 
@@ -380,7 +382,8 @@ def get_language(lang):
         # The translator was not active when _extra_lang_codes was defined, so
         # re-translate
         return translate(_extra_lang_codes[lang])
-    return get_iso_language(getattr(_lang_trans, 'ugettext', translate), lang)
+    attr = 'gettext' if sys.version_info.major > 2 else 'ugettext'
+    return get_iso_language(getattr(_lang_trans, attr, translate), lang)
 
 
 def calibre_langcode_to_name(lc, localize=True):

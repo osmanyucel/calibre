@@ -1,14 +1,12 @@
 #!/usr/bin/env python2
 # vim:fileencoding=utf-8
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__ = 'GPL v3'
 __copyright__ = '2014, Kovid Goyal <kovid at kovidgoyal.net>'
 
 import os, glob, shutil, re, sys
 from collections import namedtuple, defaultdict
-from operator import attrgetter
 from itertools import chain
 from functools import partial
 
@@ -18,7 +16,7 @@ from calibre.spell import parse_lang_code
 from calibre.utils.config import JSONConfig
 from calibre.utils.icu import capitalize
 from calibre.utils.localization import get_lang, get_system_locale
-from polyglot.builtins import iteritems, itervalues, unicode_type
+from polyglot.builtins import iteritems, itervalues, unicode_type, filter
 
 Dictionary = namedtuple('Dictionary', 'primary_locale locales dicpath affpath builtin name id')
 LoadedDictionary = namedtuple('Dictionary', 'primary_locale locales obj builtin name id')
@@ -159,7 +157,7 @@ def get_dictionary(locale, exact_match=False):
     # Now just return any dictionary that matches the language, preferring user
     # installed ones to builtin ones
     for collection in (custom_dictionaries(), builtin_dictionaries()):
-        for d in sorted(collection, key=attrgetter('name')):
+        for d in sorted(collection, key=lambda d: d.name or ''):
             if d.primary_locale.langcode == locale.langcode:
                 return d
 

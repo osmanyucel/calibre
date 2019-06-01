@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 # vim:fileencoding=UTF-8:ts=4:sw=4:sta:et:sts=4:ai
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2011, Kovid Goyal <kovid@kovidgoyal.net>'
@@ -17,6 +16,7 @@ from threading import Lock, local
 
 from polyglot import socketserver
 from polyglot.http_server import HTTPServer, SimpleHTTPRequestHandler
+from polyglot.builtins import error_message, getcwd, unicode_type
 
 # Compiler {{{
 
@@ -39,7 +39,7 @@ def compile_coffeescript(raw, filename=None):
     try:
         ans = compiler().eval('CoffeeScript.compile(src)')
     except JSError as e:
-        return u'', (e.message,)
+        return u'', (error_message(e),)
     return ans, ()
 
 # }}}
@@ -107,9 +107,9 @@ class HTTPRequestHandler(SimpleHTTPRequestHandler):  # {{{
         self.send_response(rtype)
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Content-Range", 'bytes ' +
-                         str(start_range) + '-' + str(end_range - 1) + '/' + str(size))
-        self.send_header("Content-Type", str(mimetype))
-        self.send_header("Content-Length", str(end_range - start_range))
+                         unicode_type(start_range) + '-' + unicode_type(end_range - 1) + '/' + unicode_type(size))
+        self.send_header("Content-Type", unicode_type(mimetype))
+        self.send_header("Content-Length", unicode_type(end_range - start_range))
         self.send_header("Last-Modified", self.date_time_string(int(mtime)))
         self.end_headers()
         return f, start_range, end_range
@@ -271,7 +271,7 @@ def serve(resources={}, port=8000, host='0.0.0.0'):
     Handler.special_resources = resources
     Handler.compiler = compile_coffeescript
     httpd = Server((host, port), Handler)
-    print('serving %s at %s:%d with PID=%d'%(os.getcwdu(), host, port, os.getpid()))
+    print('serving %s at %s:%d with PID=%d'%(getcwd(), host, port, os.getpid()))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -60,7 +60,7 @@ def convert_single_ebook(parent, db, book_ids, auto_conversion=False,  # {{{
                             index_is_id=True)
 
                 out_file = PersistentTemporaryFile('.' + d.output_format)
-                out_file.write(d.output_format)
+                out_file.write(d.output_format.encode('utf-8'))
                 out_file.close()
                 temp_files = [in_file]
 
@@ -122,7 +122,7 @@ def convert_single_ebook(parent, db, book_ids, auto_conversion=False,  # {{{
                 (
                     _('Could not convert the book because no supported source format was found')
                     if len(res) == 1 else
-                    _('Could not convert {num} of {tot} books, because no supported source formats were found.'),
+                    _('Could not convert {num} of {tot} books, because no supported source formats were found.')
                 ).format(num=len(res), tot=total),
                 msg).exec_()
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python2
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 __license__   = 'GPL v3'
 __copyright__ = '2011, Kovid Goyal kovid@kovidgoyal.net'
@@ -11,7 +10,10 @@ Fetch metadata using Overdrive Content Reserve
 '''
 import re, random, copy, json
 from threading import RLock
-from Queue import Queue, Empty
+try:
+    from queue import Empty, Queue
+except ImportError:
+    from Queue import Empty, Queue
 
 
 from calibre.ebooks.metadata import check_isbn

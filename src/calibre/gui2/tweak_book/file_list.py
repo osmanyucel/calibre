@@ -7,7 +7,6 @@ import os
 import posixpath
 import sys
 import textwrap
-from binascii import hexlify
 from collections import Counter, OrderedDict, defaultdict
 from functools import partial
 
@@ -19,7 +18,7 @@ from PyQt5.Qt import (
     QVBoxLayout, QWidget, pyqtSignal
 )
 
-from calibre import human_readable, plugins, sanitize_file_name_unicode
+from calibre import human_readable, plugins, sanitize_file_name
 from calibre.ebooks.oeb.base import OEB_DOCS, OEB_STYLES
 from calibre.ebooks.oeb.polish.container import OEB_FONTS, guess_type
 from calibre.ebooks.oeb.polish.cover import (
@@ -39,7 +38,8 @@ from calibre.gui2.tweak_book import (
 from calibre.gui2.tweak_book.editor import syntax_from_mime
 from calibre.gui2.tweak_book.templates import template_for
 from calibre.utils.icu import numeric_sort_key
-from polyglot.builtins import iteritems, itervalues, unicode_type, range
+from polyglot.builtins import iteritems, itervalues, unicode_type, range, filter, map
+from polyglot.binary import as_hex_unicode
 
 try:
     from PyQt5 import sip
@@ -73,7 +73,7 @@ def name_is_ok(name, show_error):
     norm = name.replace('\\', '/')
     parts = name.split('/')
     for x in parts:
-        if sanitize_file_name_unicode(x) != x:
+        if sanitize_file_name(x) != x:
             return show_error(_('The file name contains invalid characters')) and False
     if current_container().has_name(norm):
         return show_error(_('This file name already exists in the book')) and False
@@ -81,7 +81,7 @@ def name_is_ok(name, show_error):
     return True
 
 
-def get_bulk_rename_settings(parent, number, msg=None, sanitize=sanitize_file_name_unicode,
+def get_bulk_rename_settings(parent, number, msg=None, sanitize=sanitize_file_name,
         leading_zeros=True, prefix=None, category='text', allow_spine_order=False):  # {{{
     d = QDialog(parent)
     d.setWindowTitle(_('Bulk rename items'))
@@ -392,7 +392,7 @@ class FileList(QTreeWidget):
 
             seen[text] = item
             item.setText(0, text)
-            item.setText(1, hexlify(numeric_sort_key(text)))
+            item.setText(1, as_hex_unicode(numeric_sort_key(text)))
 
         def render_emblems(item, emblems):
             emblems = tuple(emblems)
@@ -990,7 +990,7 @@ class MergeDialog(QDialog):  # {{{
 
         buttons = self.buttons = [QRadioButton(n) for n in names]
         buttons[0].setChecked(True)
-        map(w.l.addWidget, buttons)
+        tuple(map(w.l.addWidget, buttons))
         sa.setWidget(w)
 
         self.resize(self.sizeHint() + QSize(150, 20))
@@ -1030,6 +1030,6 @@ class FileListWidget(QWidget):
         return self.file_list.current_name
 
     def __getattr__(self, name):
-        if name in self.forwarded_signals:
+        if name in object.__getattribute__(self, 'forwarded_signals'):
             return getattr(self.file_list, name)
         return QWidget.__getattr__(self, name)

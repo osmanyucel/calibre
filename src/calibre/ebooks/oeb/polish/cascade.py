@@ -2,8 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from __future__ import (unicode_literals, division, absolute_import,
-                        print_function)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from collections import defaultdict, namedtuple
 from functools import partial
 from itertools import count
@@ -15,7 +14,7 @@ from css_parser.css import CSSStyleSheet, CSSRule, Property
 from css_selectors import Select, INAPPROPRIATE_PSEUDO_CLASSES, SelectorError
 from calibre import as_unicode
 from calibre.ebooks.css_transform_rules import all_properties
-from calibre.ebooks.oeb.base import OEB_STYLES, XHTML
+from calibre.ebooks.oeb.base import OEB_STYLES, XHTML, css_text
 from calibre.ebooks.oeb.normalize_css import normalizers, DEFAULTS
 from calibre.ebooks.oeb.stylizer import media_ok, INHERITED
 from tinycss.fonts3 import serialize_font_family, parse_font_family
@@ -120,8 +119,8 @@ class Values(tuple):
     def cssText(self):
         ' This will return either a string or a tuple of strings '
         if len(self) == 1:
-            return self[0].cssText
-        return tuple(x.cssText for x in self)
+            return css_text(self[0])
+        return tuple(css_text(x) for x in self)
 
 
 def normalize_style_declaration(decl, sheet_name):
@@ -129,7 +128,7 @@ def normalize_style_declaration(decl, sheet_name):
     for prop in iterdeclaration(decl):
         if prop.name == 'font-family':
             # Needed because of https://bitbucket.org/cthedot/cssutils/issues/66/incorrect-handling-of-spaces-in-font
-            prop.propertyValue.cssText = serialize_font_family(parse_font_family(prop.propertyValue.cssText))
+            prop.propertyValue.cssText = serialize_font_family(parse_font_family(css_text(prop.propertyValue)))
         ans[prop.name] = Values(prop.propertyValue, sheet_name, prop.priority)
     return ans
 
